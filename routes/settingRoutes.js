@@ -4,7 +4,7 @@ const router = express.Router();
 const {
     getSettings,
     updateSettings,
-} = require("../controllers/settingController");
+} = require("../controllers/Settingcontroller");
 
 const { protect, adminOnly } = require("../middleware/authMiddleware");
 

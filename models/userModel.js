@@ -1,9 +1,11 @@
-
 const mongoose =
   require("mongoose");
 
 const bcrypt =
   require("bcryptjs");
+
+const crypto =
+  require("crypto");
 
 const userSchema =
   new mongoose.Schema(
@@ -31,16 +33,16 @@ const userSchema =
       // PHONE EMPTY HO SAKTA
 
 
-phone: {
-  type: String,
-  default: "",
-},
+      phone: {
+        type: String,
+        default: "",
+      },
 
-password: {
-  type: String,
-  default: "",
-  select: false,
-},
+      password: {
+        type: String,
+        default: "",
+        select: false,
+      },
 
 
 
@@ -79,6 +81,35 @@ password: {
         default: true,
       },
 
+      // =========================
+      // REFERRAL SYSTEM
+      // =========================
+
+      // ISS USER KA APNA CODE
+      // JISE YE DUSRO KO SHARE KAREGA
+
+      referralCode: {
+        type: String,
+        unique: true,
+      },
+
+      // KISNE ISKO REFER KIYA
+      // (NULL AGAR DIRECT SIGNUP)
+
+      referredBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+
+      // KITNE LOGO KO
+      // ISNE REFER KIYA HAI
+
+      referralCount: {
+        type: Number,
+        default: 0,
+      },
+
     },
     {
       timestamps: true,
@@ -101,25 +132,88 @@ userSchema.pre(
       !this.isModified(
         "password"
       )
-    )
-      return;
+    ) {
 
-    // GOOGLE LOGIN
-    // PASSWORD EMPTY
+      // PASSWORD SKIP HO GAYA
+      // AB REFERRAL CODE CHECK KARO
 
-    if (!this.password)
-      return;
+    } else if (this.password) {
 
-    // HASH PASSWORD
+      // HASH PASSWORD
 
-    this.password =
-      await bcrypt.hash(
-        this.password,
-        10
-      );
+      this.password =
+        await bcrypt.hash(
+          this.password,
+          10
+        );
+
+    }
+
+    // =========================
+    // AUTO GENERATE REFERRAL CODE
+    // (SIRF NAYE USER PE)
+    // =========================
+
+    if (
+      !this.referralCode
+    ) {
+
+      this.referralCode =
+        await generateUniqueReferralCode(
+          this.fullname
+        );
+
+    }
 
   }
 );
+
+
+
+// =========================
+// GENERATE UNIQUE REFERRAL CODE
+// =========================
+
+async function generateUniqueReferralCode(
+  fullname
+) {
+
+  const namePart =
+    (fullname || "USER")
+      .replace(/[^a-zA-Z]/g, "")
+      .toUpperCase()
+      .slice(0, 4) || "USER";
+
+  let code;
+
+  let exists = true;
+
+  // JAB TAK UNIQUE CODE NA MILE
+
+  while (exists) {
+
+    const randomPart =
+      crypto
+        .randomBytes(3)
+        .toString("hex")
+        .toUpperCase();
+
+    code =
+      namePart +
+      randomPart;
+
+    exists =
+      await mongoose
+        .model("User")
+        .exists({
+          referralCode: code,
+        });
+
+  }
+
+  return code;
+
+}
 
 
 
@@ -146,4 +240,3 @@ module.exports =
     "User",
     userSchema
   );
-

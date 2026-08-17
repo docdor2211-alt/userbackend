@@ -20,6 +20,7 @@ const {
   deleteUser,
   getAllUsers,
   getGoogleUsers,
+  getMyReferral,
 
 } = require(
   "../controllers/userController"
@@ -36,6 +37,15 @@ const {
 );
 
 
+// =====================================================
+// 🔗 GET MY REFERRAL DETAILS
+// =====================================================
+
+router.get(
+  "/my-referral",
+  protect,
+  getMyReferral
+);
 
 /* =========================
    🔓 PUBLIC ROUTES

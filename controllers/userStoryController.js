@@ -18,6 +18,9 @@ exports.getStories =
         await Story.find({
 
           isActive: true,
+          expiresAt: {
+            $gt: new Date(),
+          },
 
         })
 
@@ -81,19 +84,25 @@ exports.getSingleStory =
     try {
 
       const story =
-        await Story.findById(
+        await Story.findOne({
 
-          req.params.id
+          _id:
+            req.params.id,
 
-        ).populate(
+          isActive:
+            true,
+
+          expiresAt: {
+            $gt: new Date(),
+          },
+
+        }).populate(
 
           "doctorId",
 
           "name email image"
 
         );
-
-
 
       if (!story) {
 
@@ -102,13 +111,11 @@ exports.getSingleStory =
           success: false,
 
           message:
-            "Story not found",
+            "Story not found or expired",
 
         });
 
       }
-
-
 
       res.status(200).json({
 

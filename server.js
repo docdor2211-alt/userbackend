@@ -1,4 +1,3 @@
-
 // server.js
 
 const express =
@@ -495,13 +494,13 @@ app.use(
   require("./routes/paymentRoutes")
 );
 const userPickupOrderRoutes =
-require(
-"./routes/userPickupOrderRoutes"
-);
+  require(
+    "./routes/userPickupOrderRoutes"
+  );
 
 app.use(
-"/api/user-pickup-order",
-userPickupOrderRoutes
+  "/api/user-pickup-order",
+  userPickupOrderRoutes
 );
 app.use(
   "/api/prescriptions",
@@ -545,10 +544,17 @@ app.use(
   symptomCategoryRoutes
 );
 
-  
+
 const userOrderRoutes = require("./routes/userOrderRoutes");
 
 app.use("/api/orders", userOrderRoutes);
+
+// ✅ SETTINGS ROUTES (REFERRAL BONUS ETC.)
+app.use(
+  "/api/settings",
+  require("./routes/settingRoutes")
+);
+
 /* =====================================================
    DEFAULT ROUTE
 ===================================================== */

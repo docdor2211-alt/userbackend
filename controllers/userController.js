@@ -41,6 +41,17 @@ const generateToken =
 /* =========================
    📝 REGISTER USER
 ========================= */
+// =========================
+// YE 2 LINES TOP PE ADD KARNI HAI
+// (jaha User aur jwt require kiya hai wahin)
+// =========================
+
+// const Setting =
+//   require("../models/settingModel");
+
+// const walletService =
+//   require("../services/walletService");
+
 
 exports.registerUser =
   async (req, res) => {
@@ -58,6 +69,8 @@ exports.registerUser =
         password,
 
         confirmPassword,
+
+        referralCode,
 
       } = req.body;
 
@@ -126,6 +139,37 @@ exports.registerUser =
 
       }
 
+      // =========================
+      // REFERRAL CODE CHECK
+      // (AGAR USER NE DALA HAI TO)
+      // =========================
+
+      let referredByUser =
+        null;
+
+      if (referralCode) {
+
+        referredByUser =
+          await User.findOne({
+            referralCode:
+              referralCode.toUpperCase(),
+          });
+
+        // GALAT CODE HO TO
+        // SIGNUP FIR BHI HONE DO
+        // BAS REFERRAL SKIP KARDO
+
+        if (!referredByUser) {
+
+          console.log(
+            "REFERRAL CODE INVALID:",
+            referralCode
+          );
+
+        }
+
+      }
+
       // CREATE USER
 
       const user =
@@ -142,7 +186,54 @@ exports.registerUser =
           provider:
             "local",
 
+          referredBy:
+            referredByUser
+              ? referredByUser._id
+              : null,
+
         });
+
+      // =========================
+      // REFERRAL BONUS
+      // REFER KARNE WALE KO CREDIT
+      // (SIGNUP FAIL NAHI HOGA
+      // AGAR YE STEP ERROR DE)
+      // =========================
+
+      if (referredByUser) {
+
+        try {
+
+          const settings =
+            await Setting.getSettings();
+
+          await walletService.creditWallet({
+            userId:
+              referredByUser._id,
+            amount:
+              settings.referralBonus,
+            title:
+              "Referral Bonus",
+            subtitle:
+              `${fullname} joined using your referral code`,
+          });
+
+          referredByUser.referralCount =
+            (referredByUser.referralCount ||
+              0) + 1;
+
+          await referredByUser.save();
+
+        } catch (referralError) {
+
+          console.log(
+            "REFERRAL BONUS ERROR:",
+            referralError.message
+          );
+
+        }
+
+      }
 
       // RESPONSE
 
@@ -181,8 +272,6 @@ exports.registerUser =
     }
 
   };
-
-
 
 /* =========================
    🔓 LOGIN USER
@@ -549,6 +638,110 @@ exports.updateUserProfile =
 
   };
 
+
+// =====================================================
+// GET MY REFERRAL DETAILS
+// =====================================================
+
+exports.getMyReferral = async (req, res) => {
+  try {
+    const Setting = require("../models/settingModel");
+
+    // Logged-in user
+    const user = await User.findById(req.user._id)
+      .select("fullname email referralCode referralCount");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Admin settings
+    const settings = await Setting.getSettings();
+
+    const referrerBonus = settings.referralBonus || 0;
+    const referredUserBonus =
+      settings.referredUserBonus || 0;
+
+    // Users referred by logged-in user
+    const referredUsers = await User.find({
+      referredBy: req.user._id,
+    })
+      .select(
+        "_id fullname email phone createdAt"
+      )
+      .sort({
+        createdAt: -1,
+      });
+
+    // Total amount earned by referrer
+    const totalEarned =
+      (user.referralCount || 0) *
+      referrerBonus;
+
+    // Referral users with reward information
+    const referrals = referredUsers.map(
+      (referredUser) => ({
+        _id: referredUser._id,
+        fullname: referredUser.fullname,
+        email: referredUser.email,
+        phone: referredUser.phone,
+        joinedAt: referredUser.createdAt,
+
+        referralReward: {
+          referrer: {
+            name: user.fullname,
+            amount: referrerBonus,
+          },
+
+          referredUser: {
+            name: referredUser.fullname,
+            amount: referredUserBonus,
+          },
+        },
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+
+      message:
+        "Referral details fetched successfully",
+
+      data: {
+        myReferralCode:
+          user.referralCode,
+
+        totalReferrals:
+          user.referralCount || 0,
+
+        totalEarned,
+
+        referralReward: {
+          referrerGets:
+            referrerBonus,
+
+          referredUserGets:
+            referredUserBonus,
+        },
+
+        referredUsers: referrals,
+      },
+    });
+  } catch (error) {
+    console.log(
+      "GET MY REFERRAL ERROR:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 
 /* =========================

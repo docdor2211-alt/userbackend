@@ -56,6 +56,11 @@ const storySchema =
         default: true,
 
       },
+      expiresAt: {
+        type: Date,
+        required: true,
+        index: true,
+      }
 
     },
 
